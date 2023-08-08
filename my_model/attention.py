@@ -529,7 +529,7 @@ class CrossAttention(nn.Module):
 
         # reshape hidden_states
         hidden_states = self.reshape_batch_dim_to_heads(hidden_states)
-        attention_probs = self.avr_head(attention_probs)###new: avr heads of attn 
+        attention_probs = self.avr_half_head(attention_probs)###new: avr heads of attn 
         return hidden_states, attention_probs
 
     def _sliced_attention(self, query, key, value, sequence_length, dim):
