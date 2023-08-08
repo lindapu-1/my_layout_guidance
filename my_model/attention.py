@@ -474,9 +474,10 @@ class CrossAttention(nn.Module):
         tensor = tensor.permute(0, 2, 1, 3).reshape(batch_size // head_size, seq_len, dim * head_size)
         return tensor
     
-    def avr_head(self, tensor):
+    def avr_half_head(self, tensor):
+        tensor=tensor.chunk(2)[1]
         bh, s1, s2=tensor.shape
-        head_size=self.heads
+        head_size=self.heads//2
         tensor=tensor.reshape(bh//head_size, head_size, s1, s2).mean(dim=1)
         return tensor
 
