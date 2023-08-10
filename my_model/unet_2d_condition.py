@@ -297,29 +297,33 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin):
         # there might be better ways to encapsulate this.
         t_emb = t_emb.to(dtype=self.dtype)
         emb = self.time_embedding(t_emb)
-        # 2. pre-process
+        # 2. pre-process，initialize whole attn_list
         sample = self.conv_in(sample)
         # 3. down
         attn_down = []
+        act_down=[]
         down_block_res_samples = (sample,)
         for block_idx, downsample_block in enumerate(self.down_blocks):
             if hasattr(downsample_block, "attentions") and downsample_block.attentions is not None:
-                sample, res_samples, cross_atten_prob = downsample_block(
+                sample, res_samples, cross_atten_prob, act_block_list = downsample_block(
                     hidden_states=sample,
                     temb=emb,
                     encoder_hidden_states=encoder_hidden_states
                 )
                 attn_down.append(cross_atten_prob)
+                act_down.append(act_block_list)
             else:
                 sample, res_samples = downsample_block(hidden_states=sample, temb=emb)
 
             down_block_res_samples += res_samples
 
         # 4. mid
-        sample, attn_mid = self.mid_block(sample, emb, encoder_hidden_states=encoder_hidden_states)
+        sample, attn_mid, act_mid = self.mid_block(sample, emb, encoder_hidden_states=encoder_hidden_states)
 
         # 5. up
         attn_up = []
+        act_up=[]
+
         for i, upsample_block in enumerate(self.up_blocks):
             is_final_block = i == len(self.up_blocks) - 1
 
@@ -332,7 +336,7 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin):
                 upsample_size = down_block_res_samples[-1].shape[2:]
 
             if hasattr(upsample_block, "attentions") and upsample_block.attentions is not None:
-                sample, cross_atten_prob = upsample_block(
+                sample, cross_atten_prob, act_block_list = upsample_block(
                     hidden_states=sample,
                     temb=emb,
                     res_hidden_states_tuple=res_samples,
@@ -340,6 +344,7 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin):
                     upsample_size=upsample_size,
                 )
                 attn_up.append(cross_atten_prob)
+                act_up.append(act_block_list)
             else:
                 sample = upsample_block(
                     hidden_states=sample, temb=emb, res_hidden_states_tuple=res_samples, upsample_size=upsample_size
@@ -352,4 +357,4 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin):
         if not return_dict:
             return (sample,)
 
-        return UNet2DConditionOutput(sample=sample), attn_up, attn_mid, attn_down
+        return UNet2DConditionOutput(sample=sample), attn_up, attn_mid, attn_down, act_up, act_mid, act_down
