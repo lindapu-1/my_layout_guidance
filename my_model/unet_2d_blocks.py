@@ -5,7 +5,7 @@
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -398,12 +398,14 @@ class UNetMidBlock2DCrossAttn(nn.Module):
     def forward(self, hidden_states, temb=None, encoder_hidden_states=None):
         hidden_states = self.resnets[0](hidden_states, temb)
         mid_attn = []
+        activation_list=[]
         for layer_idx, (attn, resnet) in enumerate(zip(self.attentions, self.resnets[1:])):
-            hidden_states, cross_attn_prob = attn(hidden_states, encoder_hidden_states)
+            hidden_states, cross_attn_prob,activation = attn(hidden_states, encoder_hidden_states)
             hidden_states = hidden_states.sample
             hidden_states = resnet(hidden_states, temb)
             mid_attn.append(cross_attn_prob)
-        return hidden_states, mid_attn
+            activation.append(activation)
+        return hidden_states, mid_attn, activation_list=[]
 
 
 class AttnDownBlock2D(nn.Module):
@@ -579,6 +581,7 @@ class CrossAttnDownBlock2D(nn.Module):
     def forward(self, hidden_states, temb=None, encoder_hidden_states=None):
         output_states = ()
         cross_attn_prob_list = []
+        act_block_list=[]
         for layer_idx, (resnet, attn) in enumerate(zip(self.resnets, self.attentions)):
             if self.training and self.gradient_checkpointing:
 
@@ -597,18 +600,20 @@ class CrossAttnDownBlock2D(nn.Module):
                 )[0]
             else:
                 hidden_states = resnet(hidden_states, temb)
-                tmp_hidden_states, cross_attn_prob = attn(hidden_states, encoder_hidden_states=encoder_hidden_states)
+                tmp_hidden_states, cross_attn_prob, activation = attn(hidden_states, encoder_hidden_states=encoder_hidden_states)
                 hidden_states = tmp_hidden_states.sample
 
             output_states += (hidden_states,)
             cross_attn_prob_list.append(cross_attn_prob)
+            act_block_list.append(activation)
+
         if self.downsamplers is not None:
             for downsampler in self.downsamplers:
                 hidden_states = downsampler(hidden_states)
 
             output_states += (hidden_states,)
 
-        return hidden_states, output_states, cross_attn_prob_list
+        return hidden_states, output_states, cross_attn_prob_list, act_block_list
 
 
 class DownBlock2D(nn.Module):
@@ -1096,6 +1101,7 @@ class CrossAttnUpBlock2D(nn.Module):
         super().__init__()
         resnets = []
         attentions = []
+        
 
         self.attention_type = attention_type
         self.attn_num_head_channels = attn_num_head_channels
@@ -1168,6 +1174,8 @@ class CrossAttnUpBlock2D(nn.Module):
             upsample_size=None,
     ):
         cross_attn_prob_list = list()
+        act_block_list=[]
+
         for layer_idx, (resnet, attn) in enumerate(zip(self.resnets, self.attentions)):
             # pop res hidden states
             res_hidden_states = res_hidden_states_tuple[-1]
@@ -1191,14 +1199,15 @@ class CrossAttnUpBlock2D(nn.Module):
                 )[0]
             else:
                 hidden_states = resnet(hidden_states, temb)
-                tmp_hidden_states, cross_attn_prob = attn(hidden_states, encoder_hidden_states=encoder_hidden_states)
+                tmp_hidden_states, cross_attn_prob, activation = attn(hidden_states, encoder_hidden_states=encoder_hidden_states)
                 hidden_states = tmp_hidden_states.sample
             cross_attn_prob_list.append(cross_attn_prob)
+            act_block_list.append(activation)
         if self.upsamplers is not None:
             for upsampler in self.upsamplers:
                 hidden_states = upsampler(hidden_states, upsample_size)
 
-        return hidden_states, cross_attn_prob_list
+        return hidden_states, cross_attn_prob_list, act_block_list
 
 
 class UpBlock2D(nn.Module):
