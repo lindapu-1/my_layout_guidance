@@ -404,7 +404,7 @@ class UNetMidBlock2DCrossAttn(nn.Module):
             hidden_states = hidden_states.sample
             hidden_states = resnet(hidden_states, temb)
             mid_attn.append(cross_attn_prob)
-            activation.append(activation)
+            activation_list.append(activation)
         return hidden_states, mid_attn, activation_list
 
 
