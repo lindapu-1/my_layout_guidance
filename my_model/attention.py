@@ -185,6 +185,9 @@ class Transformer2DModel(ModelMixin, ConfigMixin):
             if `return_dict` is True, otherwise a `tuple`. When returning a tuple, the first element is the sample
             tensor.
         """
+        ##extra activation
+        activation=hidden_states
+
         # 1. Input
         if self.is_input_continuous:
             batch, channel, height, weight = hidden_states.shape
@@ -217,7 +220,7 @@ class Transformer2DModel(ModelMixin, ConfigMixin):
         if not return_dict:
             return (output,)
 
-        return Transformer2DModelOutput(sample=output), cross_attn_prob
+        return Transformer2DModelOutput(sample=output), cross_attn_prob, activation
 
     def _set_use_memory_efficient_attention_xformers(self, use_memory_efficient_attention_xformers: bool):
         for block in self.transformer_blocks:
