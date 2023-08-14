@@ -32,7 +32,7 @@ def compute_ca_loss(attn_maps_mid, attn_maps_up, bboxes, object_positions):
             loss += (obj_loss/len(object_positions[obj_idx]))
 
     for attn_map_integrated in attn_maps_up[0]:
-        attn_map = attn_map_integrated.chunk(2)[1]
+        attn_map = attn_map_integrated  #.chunk(2)[1]
         #
         b, i, j = attn_map.shape
         H = W = int(math.sqrt(i))
