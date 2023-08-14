@@ -9,7 +9,7 @@ def compute_ca_loss(attn_maps_mid, attn_maps_up, bboxes, object_positions):
     if object_number == 0:
         return torch.tensor(0).float().cuda() if torch.cuda.is_available() else torch.tensor(0).float()
     for attn_map_integrated in attn_maps_mid:
-        attn_map = attn_map_integrated.chunk(2)[1]
+        attn_map = attn_map_integrated #.chunk(2)[1]
 
         #
         b, i, j = attn_map.shape
